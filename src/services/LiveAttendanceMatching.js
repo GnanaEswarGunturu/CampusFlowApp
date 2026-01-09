@@ -9,26 +9,36 @@ export const LiveAttendanceMatching = {
         const recognizedFaces = [];
 
         try {
-            // Send Image to Backend for Detection + Recognition
-            // Pass the base64 string directly.
             const prediction = await MongoDBService.recognizeFace(imageBase64);
 
-            if (prediction && prediction.matched) {
+            if (!prediction) return [];
+
+            if (prediction.status === 'no_face') {
                 recognizedFaces.push({
-                    id: prediction.person === 'eswar' ? 'ESWAR001' : 'UNKNOWN',
-                    name: prediction.person === 'eswar' ? 'Eswar' : 'Other',
-                    confidence: prediction.confidence
+                    id: 'NO_FACE',
+                    name: 'No Face Detected',
+                    confidence: 0,
+                    isWarning: true
                 });
-            } else if (prediction && !prediction.matched) {
+            }
+            else if (prediction.status === 'unknown') {
                 recognizedFaces.push({
                     id: 'UNKNOWN',
-                    name: 'Other / Unknown',
-                    confidence: prediction.confidence || 0.0
+                    name: 'Unknown Face',
+                    confidence: prediction.confidence
                 });
-            } else {
-                // Fallback Removed: Real ML or Nothing.
-                console.log("[Attendance] Server returned no match or error.");
             }
+            else if (prediction.status === 'match' && prediction.person === 'eswar') {
+                recognizedFaces.push({
+                    id: 'ESWAR001',
+                    name: 'Eswar',
+                    confidence: prediction.confidence
+                });
+            }
+            else {
+                recognizedFaces.push({ name: "Unknown", id: "UNKNOWN", confidence: 0 });
+            }
+
         } catch (error) {
             console.warn("Scan processing error:", error);
         }
