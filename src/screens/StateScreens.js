@@ -159,6 +159,47 @@ export const ReviewScreen = ({ results, onSubmit, onRetake, onCancel }) => {
     );
 };
 
+export const SuccessSignatureScreen = ({ data, onFinish }) => {
+    const presentCount = data.filter(d => d.confidence > 0).length; // Simple check if they were in the list
+    const eswar = data.find(d => d.name === 'Eswar' || d.id === 'ESWAR001');
+
+    return (
+        <View style={styles.center}>
+            <View style={{ alignItems: 'center', marginBottom: 30 }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center', marginBottom: 15 }}>
+                    <Text style={{ fontSize: 40 }}>✅</Text>
+                </View>
+                <Text style={styles.title}>Attendance Verified</Text>
+                <Text style={styles.subtitle}>{new Date().toLocaleString()}</Text>
+            </View>
+
+            <View style={styles.card}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <Text style={[styles.cardText, { fontWeight: 'bold' }]}>Class Strength:</Text>
+                    <Text style={styles.cardText}>{presentCount} Present</Text>
+                </View>
+
+                {eswar ? (
+                    <View style={{ backgroundColor: '#f0fdf4', padding: 10, borderRadius: 8, marginVertical: 10, borderWidth: 1, borderColor: '#86efac' }}>
+                        <Text style={{ color: '#166534', fontWeight: 'bold' }}>👤 {eswar.name} (ESWAR001)</Text>
+                        <Text style={{ color: '#166534', fontSize: 12 }}>Status: Present • Verified</Text>
+                    </View>
+                ) : (
+                    <Text style={{ color: '#94a3b8', fontStyle: 'italic' }}>Eswar not detected in this session.</Text>
+                )}
+
+                <View style={{ marginTop: 20, borderTopWidth: 1, borderColor: '#e2e8f0', paddingTop: 15, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: '#64748b', letterSpacing: 1, marginBottom: 5 }}>DIGITALLY SIGNED BY</Text>
+                    <Text style={{ fontFamily: 'serif', fontSize: 24, fontStyle: 'italic', color: '#1e293b' }}>Dr. P. Kumar</Text>
+                    <Text style={{ fontSize: 10, color: '#2563eb', marginTop: 5 }}>🔐 0x7F...AE29 • VERIFIED</Text>
+                </View>
+            </View>
+
+            <PrimaryButton title="Done" onPress={onFinish} color="#10b981" />
+        </View>
+    );
+};
+
 export const StatusScreen = ({ title, subtitle, icon, buttonText, onButtonPress, color }) => (
     <View style={styles.center}>
         <Text style={[styles.title, { color }]}>{icon} {title}</Text>

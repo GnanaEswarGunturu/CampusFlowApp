@@ -13,6 +13,7 @@ import {
     CapturingScreen,
     ProcessingScreen,
     ReviewScreen,
+    SuccessSignatureScreen,
     StatusScreen
 } from './src/screens/StateScreens';
 import { StudentPortal } from './src/screens/StudentPortal';
@@ -31,6 +32,7 @@ export default function App() {
     const [showTimetable, setShowTimetable] = React.useState(false);
     const [showEnrollment, setShowEnrollment] = React.useState(false);
     const [showLiveScan, setShowLiveScan] = React.useState(false);
+    const [showSuccess, setShowSuccess] = React.useState(false); // Explicit success state for Live Scan logic
     const [finalData, setFinalData] = React.useState([]);
 
     // Transition handling / Side effects
@@ -96,13 +98,23 @@ export default function App() {
             );
         }
 
+        if (showSuccess) {
+            return (
+                <SuccessSignatureScreen
+                    data={finalData}
+                    onFinish={() => setShowSuccess(false)}
+                />
+            );
+        }
+
         if (showLiveScan) {
             return (
                 <LiveScanScreen
                     onSubmit={(data) => {
                         setFinalData(data);
                         setShowLiveScan(false);
-                        send({ type: 'SUCCESS' }); // Trick to go to COMPLETED
+                        // Instead of sending machine event (which fails in IDLE), we manually show success
+                        setShowSuccess(true);
                     }}
                     onCancel={() => setShowLiveScan(false)}
                 />
@@ -183,13 +195,11 @@ export default function App() {
 
             case 'COMPLETED':
                 return (
-                    <StatusScreen
-                        title="Attendance Completed"
-                        subtitle="Success! All records have been synchronized."
-                        icon="✅"
-                        buttonText="Export Audit Report"
-                        onButtonPress={() => setShowAudit(true)}
-                        color="#10b981"
+                    <SuccessSignatureScreen
+                        data={finalData}
+                        onFinish={() => {
+                            send({ type: 'RESET' }); // Or go to Audit
+                        }}
                     />
                 );
 
