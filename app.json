@@ -1,0 +1,47 @@
+{
+    "expo": {
+        "name": "campusflow",
+        "slug": "campusflow",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "light",
+        "splash": {
+            "image": "./assets/splash.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff"
+        },
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.campusflow.app"
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#ffffff"
+            },
+            "package": "com.campusflow.app"
+        },
+        "web": {
+            "favicon": "./assets/favicon.png"
+        },
+        "plugins": [
+            [
+                "expo-camera",
+                {
+                    "cameraPermission": "Allow CampusFlow to access your camera for attendance."
+                }
+            ],
+            [
+                "react-native-ble-plx",
+                {
+                    "isBackgroundEnabled": false,
+                    "modes": [
+                        "central"
+                    ],
+                    "bluetoothAlwaysPermission": "Allow CampusFlow to connect to attendance hardware."
+                }
+            ]
+        ]
+    }
+}

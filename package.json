@@ -1,0 +1,33 @@
+{
+  "name": "campusflow",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@tensorflow/tfjs": "^4.17.0",
+    "@tensorflow/tfjs-react-native": "^1.0.0",
+    "@xstate/react": "^4.0.0",
+    "expo": "~54.0.31",
+    "expo-camera": "~17.0.10",
+    "expo-device": "~8.0.10",
+    "expo-gl": "~16.0.9",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-ble-plx": "^3.1.2",
+    "react-native-fs": "^2.20.0",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-svg": "15.12.1",
+    "xstate": "^5.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  },
+  "private": true
+}
