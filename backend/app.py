@@ -164,6 +164,141 @@ def predict():
         print(f"❌ Prediction Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+from pymongo import MongoClient, errors
+import datetime
+import sys
+
+# --- MONGODB CONFIGURATION ---
+# Using Cloud MongoDB Atlas provided by user
+MONGO_URI = "mongodb+srv://gnanaeswar:0nSGrGOnKLVrCrac@cluster0.xrwiufo.mongodb.net/CampusFlow?retryWrites=true&w=majority&appName=Cluster0"
+DB_NAME = "CampusFlow"
+
+try:
+    # Increased timeout for cloud connection
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+    # Trigger connection to fail fast if down
+    client.server_info()
+    db = client[DB_NAME]
+    attendance_col = db["attendance"]
+    
+    # --- SCHEMA ENFORCEMENT ---
+    # prevent duplicate attendance for the same student on the same day
+    attendance_col.create_index([("studentId", 1), ("date", 1)], unique=True)
+    
+    print(f"✅ Connected to MongoDB: {DB_NAME}")
+    print("   Collection: attendance")
+    
+except errors.OperationFailure as e:
+    print("\n❌ AUTHENTICATION FAILED: Check Username/Password")
+    print(f"   Error Details: {e}")
+    print("   Make sure your IP Address is whitelisted in MongoDB Atlas.\n")
+    db = None
+except errors.ConfigurationError as e:
+    print("\n❌ NETWORK/DNS ERROR: Could not connect to Atlas.")
+    print("   Your network is blocking the DNS lookup (common in Colleges/Offices).")
+    print("   👉 TRY THIS: Connect to a Mobile Hotspot instead of WiFi.\n")
+    db = None
+except errors.ServerSelectionTimeoutError:
+    print("\n❌ CONNECTION FAILED: MongoDB Reachability Error")
+    print("   Check your internet connection or Atlas IP Whitelist.\n")
+    db = None
+
+# --- STUDENT DATABASE ---
+# Maps the ML Label (e.g. "Eswar") to the official Student ID
+STUDENT_DB = {
+    "eswar": { "id": "CSE2026_045", "name": "Eswar" },
+    "praveen": { "id": "CSE2026_046", "name": "Praveen" }
+}
+
+@app.route('/api/attendance/mark', methods=['POST'])
+def mark_attendance():
+    if db is None:
+        return jsonify({"error": "MongoDB Service Unavailable"}), 503
+
+    try:
+        data = request.json
+        # Expected: { "person": "eswar", "confidence": 0.91 }
+        
+        person_label = data.get('person', '').lower()
+        confidence = float(data.get('confidence', 0.0))
+
+        # 1. Validate Mapping (One-to-One)
+        student = STUDENT_DB.get(person_label)
+        if not student:
+            return jsonify({"error": "Student not found in mapping"}), 404
+
+        # 2. Validate Threshold
+        if confidence < 0.50: 
+             return jsonify({"error": "Confidence below threshold"}), 400
+
+        # 3. Construct Document
+        now = datetime.datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H:%M:%S")
+
+        doc = {
+            "studentId": student["id"],
+            "studentName": student["name"],
+            "date": date_str,      # Query Filter
+            "time": time_str,      # Sort Key
+            "confidence": confidence,
+            "status": "Present",
+            "recognizedBy": "FaceRecognition",
+            "device": "MobileApp",
+            "createdAt": now    # Audit Timestamp
+        }
+
+        # 4. Insert into MongoDB (Atomic)
+        try:
+            attendance_col.insert_one(doc)
+            print(f"✅ Attendance Marked: {student['name']}")
+            return jsonify({
+                "success": True, 
+                "message": "Attendance Marked Successfully",
+                "data": { 
+                    "studentId": student["id"], 
+                    "name": student["name"], 
+                    "date": date_str,
+                    "time": time_str 
+                }
+            })
+        except errors.DuplicateKeyError:
+            print(f"⚠️ Duplicate ignored: {student['name']}")
+            return jsonify({
+                "success": True, 
+                "message": "Already marked for today",
+                "data": { "studentId": student["id"] }
+            })
+
+    except Exception as e:
+        print(f"❌ API Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/attendance', methods=['GET'])
+def get_attendance():
+    if db is None:
+        return jsonify([])
+
+    try:
+        # Filters: ?date=2026-01-09&studentId=CSE2026_045
+        date_filter = request.args.get('date')
+        student_id = request.args.get('studentId')
+
+        query = {}
+        if date_filter:
+            query["date"] = date_filter
+        if student_id:
+            query["studentId"] = student_id
+
+        # Execute Query
+        # Exclude _id (ObjectId) as it's not JSON serializable by default
+        cursor = attendance_col.find(query, {"_id": 0}).sort("time", -1)
+        records = list(cursor)
+        
+        return jsonify(records)
+    except Exception as e:
+         return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     print("🚀 OpenCV LBPH ML Server running on port 5000")
     app.run(host='0.0.0.0', port=5000, debug=False)
