@@ -46,7 +46,7 @@ export const MongoDBService = {
             // Send the raw image for inference
             const response = await axios.post(`${API_URL}/predict`, {
                 image: imageBase64
-            }, { timeout: 3000 }); // 3s timeout for image upload & processing
+            }, { timeout: 10000 }); // Increased to 10s for slower devices/networks
 
             return response.data; // Expected: { person: "eswar", confidence: 0.88, matched: true }
         } catch (error) {

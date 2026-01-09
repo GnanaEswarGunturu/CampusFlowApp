@@ -142,6 +142,9 @@ def predict():
         is_match = distance < THRESHOLD
         final_name = found_name if is_match else "Other"
         
+        # Robust check: case-insensitive "eswar"
+        is_eswar = final_name.lower().strip() == "eswar"
+
         if not is_match:
             return jsonify({
                 "status": "unknown",
@@ -152,7 +155,7 @@ def predict():
         
         return jsonify({
             "status": "match",
-            "person": "eswar" if final_name == "Eswar" else "other",
+            "person": "eswar" if is_eswar else "other",
             "confidence": round(confidence, 2),
             "distance": distance
         })
