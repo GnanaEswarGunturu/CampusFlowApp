@@ -154,9 +154,17 @@ export default function App() {
                 return <CapturingScreen onCancel={() => send({ type: 'CANCEL' })} />;
 
             case 'PROCESSING':
+                // REAL ML: Instead of a fake spinner, we jump straight to the Live Camera
+                // The hardware scan is done, now we verify faces.
                 return (
-                    <MLProcessingScreen
-                        onComplete={(results) => send({ type: 'FACE_RECOGNITION_COMPLETE', results })}
+                    <LiveScanScreen
+                        onSubmit={(data) => {
+                            setFinalData(data);
+                            // We go to COMPLETED (Success) via our manual state trick,
+                            // OR we send an event if the machine supports it.
+                            // Let's use the machine flow properly:
+                            send({ type: 'FACE_RECOGNITION_COMPLETE', results: data });
+                        }}
                         onCancel={() => send({ type: 'CANCEL' })}
                     />
                 );
@@ -165,7 +173,12 @@ export default function App() {
                 return (
                     <ReviewScreen
                         results={state.context.attendanceList || []}
-                        onSubmit={handleSubmit}
+                        onSubmit={(data) => {
+                            // We capture the final list and move to Submitting
+                            // This 'data' has the 'present' boolean toggles
+                            setFinalData(data);
+                            handleSubmit(data);
+                        }}
                         onRetake={() => send({ type: 'RETAKE' })}
                         onCancel={() => send({ type: 'CANCEL' })}
                     />
