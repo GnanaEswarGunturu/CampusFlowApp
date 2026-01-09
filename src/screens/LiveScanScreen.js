@@ -7,17 +7,36 @@ export const LiveScanScreen = ({ onSubmit, onCancel }) => {
     const [matches, setMatches] = useState([]);
     const [scanning, setScanning] = useState(true);
 
+    const cameraRef = React.useRef(null);
+
     useEffect(() => {
         let active = true;
 
         const scanLoop = async () => {
-            // Simulate "Live" updates every 2 seconds
-            const result = await LiveAttendanceMatching.scanFrame('frame');
-            if (active) setMatches(result);
+            if (cameraRef.current) {
+                try {
+                    // REAL ML: Take actual snapshot
+                    const photo = await cameraRef.current.takePictureAsync({
+                        base64: true,
+                        quality: 0.4, // Lower quality for speed
+                        skipProcessing: true
+                    });
+
+                    if (photo.base64) {
+                        const result = await LiveAttendanceMatching.scanFrame(photo.base64);
+                        console.log("📸 ML Prediction:", JSON.stringify(result));
+                        if (active) setMatches(result);
+                    }
+                } catch (e) {
+                    console.warn("Camera capture failed", e);
+                }
+            }
         };
 
-        const interval = setInterval(scanLoop, 2000);
-        scanLoop(); // Initial
+        const interval = setInterval(scanLoop, 2000); // 2 seconds delay
+
+        // Wait for camera to mount before starting
+        setTimeout(scanLoop, 1000);
 
         return () => { active = false; clearInterval(interval); };
     }, []);
@@ -52,6 +71,7 @@ export const LiveScanScreen = ({ onSubmit, onCancel }) => {
         <View style={styles.container}>
             <View style={styles.cameraView}>
                 <CameraView
+                    ref={cameraRef}
                     style={StyleSheet.absoluteFill}
                     facing="back"
                 />
@@ -62,14 +82,15 @@ export const LiveScanScreen = ({ onSubmit, onCancel }) => {
 
             <View style={styles.resultsPanel}>
                 <Text style={styles.header}>
-                    Matched: {matches.length}/52 Present
+                    Matched: {matches.length} Present
                 </Text>
 
                 <FlatList
                     data={matches}
-                    keyExtractor={item => item.id}
+                    keyExtractor={item => item.id || Math.random().toString()}
                     renderItem={renderItem}
                     style={styles.list}
+                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#64748b' }}>Searching for faces...</Text>}
                 />
 
                 <TouchableOpacity style={styles.btnSubmit} onPress={() => onSubmit(matches)}>

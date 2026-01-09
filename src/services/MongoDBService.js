@@ -2,8 +2,8 @@
 import axios from 'axios';
 
 // Replace with your Laptop's IP if running on physical device
-// For Android Emulator, use 'http://10.0.2.2:5000'
-const API_URL = 'http://10.0.2.2:5000/api';
+// Auto-detected from Python logs: 172.16.1.75
+const API_URL = 'http://172.16.1.75:5000/api';
 
 export const MongoDBService = {
     // 1. Fetch Profiles for Local Matching
@@ -25,23 +25,37 @@ export const MongoDBService = {
         }
     },
 
-    // 2. Enroll Student
+    // 2. Enroll Student (REAL ML: Send Image)
     enrollStudent: async (name, studentId, embedding, imageBase64) => {
         try {
-            await axios.post(`${API_URL}/enroll`, {
-                name,
-                student_id: studentId,
-                embedding_vector: embedding,
-                image_base64: imageBase64 || "mock_base64"
+            // "embedding" arg is ignored, we send imageBase64 so Python can generate it.
+            const response = await axios.post(`${API_URL}/train`, {
+                label: name,
+                image: imageBase64
             });
-            return true;
+            return response.data.success;
         } catch (error) {
-            console.error("[MongoDB] Enrollment Failed:", error.message);
+            console.error("[Backend] Enrollment Failed:", error.message);
             return false;
         }
     },
 
-    // 3. Mark Attendance (Optional - if backend tracks it)
+    // 3. Server-Side Recognition (REAL ML: Send Image)
+    recognizeFace: async (imageBase64) => {
+        try {
+            // Send the raw image for inference
+            const response = await axios.post(`${API_URL}/predict`, {
+                image: imageBase64
+            }, { timeout: 3000 }); // 3s timeout for image upload & processing
+
+            return response.data; // Expected: { person: "eswar", confidence: 0.88, matched: true }
+        } catch (error) {
+            console.warn("[Backend] Recognition API Failed:", error.message);
+            return null;
+        }
+    },
+
+    // 4. Mark Attendance
     markAttendance: async (sessionId, matches) => {
         // Implementation for attendance submission
         return true;

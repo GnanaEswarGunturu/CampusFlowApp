@@ -9,7 +9,9 @@ import { MongoDBService } from './MongoDBService';
 const ESWAR_IMAGES = [
     require('../assets/training_data/eswar/eswar1.jpg'),
     require('../assets/training_data/eswar/eswar2.jpg'),
-    require('../assets/training_data/eswar/eswar3.jpg')
+    require('../assets/training_data/eswar/eswar3.jpg'),
+    require('../assets/training_data/eswar/eswar4.jpg'),
+    require('../assets/training_data/eswar/eswar5.jpg')
 ];
 
 export const AutoEnrollService = {
@@ -26,7 +28,7 @@ export const AutoEnrollService = {
                 // 2. Preprocess (Resize to manageable size for detection)
                 const manipResult = await ImageManipulator.manipulateAsync(
                     imageAsset.localUri || imageAsset.uri,
-                    [{ resize: { width: 400 } }], // Resize for faster detection
+                    [{ resize: { width: 300 } }], // Resize small for fast upload
                     { base64: true, format: ImageManipulator.SaveFormat.JPEG }
                 );
 
@@ -51,14 +53,11 @@ export const AutoEnrollService = {
                 // 2. BUT, we rely on the `MongoDBService` fallback we already built 
                 //    which handles "Eswar" matches automatically.
 
-                // However, to make it "Look" real in the DB:
-                const fakeEmbedding = Array(128).fill(0).map(() => Math.random());
-
-                // 4. Save to MongoDB
+                // 4. Save to Backend (Python trains on Image)
                 const enrolled = await MongoDBService.enrollStudent(
                     "Eswar",
                     "ESWAR001",
-                    fakeEmbedding, // real world would be: await FaceRecognitionService.generateEmbedding(face)
+                    null, // Backend generates embedding
                     manipResult.base64
                 );
 

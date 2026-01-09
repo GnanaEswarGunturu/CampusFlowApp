@@ -61,6 +61,48 @@ app.get('/api/profiles', async (req, res) => {
     }
 });
 
+// RECOGNIZE ROUTE (Strict Production ML Logic)
+app.post('/api/recognize', async (req, res) => {
+    try {
+        const { embedding_vector } = req.body;
+
+        if (!embedding_vector || embedding_vector.length !== 128) {
+            return res.status(400).json({ error: "Invalid embedding format" });
+        }
+
+        const profiles = await BiometricProfile.find({});
+
+        let bestMatch = { label: "unknown", confidence: 0.0 };
+        const THRESHOLD = 0.60;
+
+        for (const profile of profiles) {
+            const similarity = cosineSimilarity(embedding_vector, profile.embedding_vector);
+            if (similarity > bestMatch.confidence) {
+                bestMatch = {
+                    label: profile.name,
+                    confidence: similarity
+                };
+            }
+        }
+
+        // Apply Threshold Decision Rule
+        const isMatch = bestMatch.confidence >= THRESHOLD && bestMatch.label !== "unknown";
+
+        const response = {
+            person: isMatch ? bestMatch.label : "other",
+            confidence: bestMatch.confidence,
+            attendanceMarked: isMatch && bestMatch.label === "Eswar"
+        };
+
+        console.log(`🧠 Prediction: ${response.person} (${(response.confidence * 100).toFixed(1)}%)`);
+        res.json(response);
+
+    } catch (error) {
+        console.error("Recognition Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Seed Route (For "Auto-Enrollment Demo")
 app.post('/api/seed', async (req, res) => {
     try {
