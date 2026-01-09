@@ -1,0 +1,101 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { LiveAttendanceMatching } from '../services/LiveAttendanceMatching';
+
+export const LiveScanScreen = ({ onSubmit, onCancel }) => {
+    const [matches, setMatches] = useState([]);
+    const [scanning, setScanning] = useState(true);
+
+    useEffect(() => {
+        let active = true;
+
+        const scanLoop = async () => {
+            // Simulate "Live" updates every 2 seconds
+            const result = await LiveAttendanceMatching.scanFrame('frame');
+            if (active) setMatches(result);
+        };
+
+        const interval = setInterval(scanLoop, 2000);
+        scanLoop(); // Initial
+
+        return () => { active = false; clearInterval(interval); };
+    }, []);
+
+    const [permission, requestPermission] = useCameraPermissions();
+
+    if (!permission) {
+        return <View />;
+    }
+
+    if (!permission.granted) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.header}>Camera Permission Required</Text>
+                <TouchableOpacity onPress={requestPermission} style={styles.btnSubmit}>
+                    <Text style={styles.btnText}>Grant Permission</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const renderItem = ({ item }) => (
+        <View style={styles.matchRow}>
+            <Text style={styles.matchName}>{item.name}</Text>
+            <Text style={[styles.matchScore, { color: item.confidence > 0.9 ? '#10b981' : '#f59e0b' }]}>
+                {(item.confidence * 100).toFixed(1)}% ✅
+            </Text>
+        </View>
+    );
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.cameraView}>
+                <CameraView
+                    style={StyleSheet.absoluteFill}
+                    facing="back"
+                />
+                <View style={styles.overlay}>
+                    <Text style={styles.overlayText}>Live Multi-Face Detection Active</Text>
+                </View>
+            </View>
+
+            <View style={styles.resultsPanel}>
+                <Text style={styles.header}>
+                    Matched: {matches.length}/52 Present
+                </Text>
+
+                <FlatList
+                    data={matches}
+                    keyExtractor={item => item.id}
+                    renderItem={renderItem}
+                    style={styles.list}
+                />
+
+                <TouchableOpacity style={styles.btnSubmit} onPress={() => onSubmit(matches)}>
+                    <Text style={styles.btnText}>Submit Attendance</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={onCancel} style={{ marginTop: 15, alignSelf: 'center' }}>
+                    <Text style={{ color: '#94a3b8' }}>Cancel Scan</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'black' },
+    cameraView: { height: '45%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#1e293b' },
+    cameraText: { color: '#475569', fontSize: 18 },
+    overlay: { position: 'absolute', bottom: 20, backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 5 },
+    overlayText: { color: '#4ade80', fontSize: 12, fontWeight: 'bold' },
+    resultsPanel: { flex: 1, backgroundColor: '#f8fafc', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25 },
+    header: { fontSize: 20, fontWeight: 'bold', color: '#1e293b', marginBottom: 15, textAlign: 'center' },
+    list: { marginBottom: 20 },
+    matchRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#e2e8f0' },
+    matchName: { fontSize: 16, color: '#334155', fontWeight: 'bold' },
+    matchScore: { fontSize: 16, fontWeight: 'bold' },
+    btnSubmit: { backgroundColor: '#2563eb', padding: 15, borderRadius: 12, alignItems: 'center' },
+    btnText: { color: 'white', fontWeight: 'bold', fontSize: 18 }
+});

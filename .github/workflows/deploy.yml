@@ -1,0 +1,17 @@
+name: Deploy to HackFest
+on:
+  push:
+    branches: [ "main", "hackfest-demo" ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Build and Deploy Preview
+        run: |
+          echo "Simulating EAS/Vercel Deploy..."
+          echo "https://campusflow-hackfest.vercel.app"

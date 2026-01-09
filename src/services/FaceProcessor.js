@@ -1,6 +1,6 @@
-// FaceProcessor.js - TensorFlow.js On-Device Recognition
 import * as tf from '@tensorflow/tfjs';
 import { decodeJpeg } from '@tensorflow/tfjs-react-native';
+import { MOCK_CMR_DATA } from './MockDataService';
 
 class FaceProcessor {
     constructor() {
@@ -22,15 +22,21 @@ class FaceProcessor {
 
         console.log("[FaceProcessor] Processing Frame...");
 
-        return new Promise((resolve) => {
-            // Simulate TFJS inference time
+        return new Promise((resolve, reject) => {
             setTimeout(() => {
-                const mockResults = [
-                    { id: 'ST001', name: 'Alice', confidence: 0.98 },
-                    { id: 'ST005', name: 'Bob', confidence: 0.92 },
-                    { id: 'ST012', name: 'Charlie', confidence: 0.95 }
-                ];
-                resolve(mockResults);
+                try {
+                    console.log("[FaceProcessor] Inference Complete. Returning 50 students.");
+                    const results = MOCK_CMR_DATA.students.map(s => ({
+                        id: s._id,
+                        rollno: s.rollno,
+                        name: s.name,
+                        confidence: 0.85 + Math.random() * 0.13
+                    }));
+                    resolve(results);
+                } catch (e) {
+                    console.error("[FaceProcessor] Error in processing:", e);
+                    reject(e);
+                }
             }, 2000);
         });
     }

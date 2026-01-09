@@ -1,0 +1,11 @@
+{
+    "name": "campusflow-hackfest",
+    "version": 2,
+    "public": true,
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/"
+        }
+    ]
+}

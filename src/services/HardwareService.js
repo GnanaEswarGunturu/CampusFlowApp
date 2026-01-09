@@ -12,16 +12,11 @@ class HardwareService {
     async startRotationScan() {
         console.log("[HardwareService] Starting ESP32 Rotation Scan...");
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             // Simulate hardware rotation scan delay
             setTimeout(() => {
-                const success = Math.random() > 0.1; // 90% success rate
-                if (success) {
-                    console.log("[HardwareService] Scan Complete.");
-                    resolve({ status: 'SUCCESS', count: 45 });
-                } else {
-                    reject(new Error("ESP32 Connection Timeout"));
-                }
+                console.log("[HardwareService] Scan Complete.");
+                resolve({ status: 'SUCCESS', count: 45 });
             }, 3000);
         });
     }
