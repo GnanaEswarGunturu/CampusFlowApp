@@ -127,11 +127,15 @@ def predict():
             return jsonify({"status": "error", "message": "Model untrained"})
 
         # TUNING: Lower distance = better match.
+        # TUNING: Lower distance = better match.
         # < 50: Excellent, 50-90: Good/Okay, > 90: Unknown
         THRESHOLD = 90.0
         
-        # Simple Linear Confidence: 0 (Dist 100) to 1.0 (Dist 0)
-        confidence = float(max(0.0, (100.0 - distance) / 100.0))
+        # Calibration for Demo: 
+        # Distance 0   -> 100% Confidence
+        # Distance 90  -> 50% Confidence (Min passing)
+        # Distance 180 -> 0% Confidence
+        confidence = float(max(0.0, 1.0 - (distance / 180.0)))
 
         found_name = "Other"
         for name, lid in label_map.items():
