@@ -28,10 +28,12 @@ export const LiveAttendanceMatching = {
                     confidence: prediction.confidence
                 });
             }
-            else if (prediction.status === 'match' && prediction.person === 'eswar') {
+            else if (prediction.status === 'match') {
+                // Generic handling for any matched person (Eswar, Praveen, etc)
+                const nameCapitalized = prediction.person.charAt(0).toUpperCase() + prediction.person.slice(1);
                 recognizedFaces.push({
-                    id: 'ESWAR001',
-                    name: 'Eswar',
+                    id: `${nameCapitalized.toUpperCase()}001`,
+                    name: nameCapitalized,
                     confidence: prediction.confidence
                 });
             }

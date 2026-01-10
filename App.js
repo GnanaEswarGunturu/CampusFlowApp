@@ -22,6 +22,7 @@ import { TimetableScreen } from './src/screens/Timetable';
 import { MLProcessingScreen } from './src/screens/MLProcessing';
 import { EnrollmentScreen } from './src/screens/EnrollmentScreen';
 import { LiveScanScreen } from './src/screens/LiveScanScreen';
+import { MongoDBService } from './src/services/MongoDBService';
 import { View, Text, Switch, TouchableOpacity } from 'react-native';
 
 export default function App() {
@@ -110,16 +111,45 @@ export default function App() {
         if (showLiveScan) {
             return (
                 <LiveScanScreen
-                    onSubmit={(data) => {
-                        setFinalData(data);
+                    onSubmit={async (data) => {
+
+                        if (!data || data.length === 0) {
+                            Alert.alert("No Data", "No faces detected to submit.");
+                            return;
+                        }
+
+                        // VALIDATION
+                        const validStudents = data.filter(p => p.name !== 'No Face Detected');
+                        console.log("✅ Valid Students to Submit:", JSON.stringify(validStudents));
+
+                        setFinalData(validStudents);
                         setShowLiveScan(false);
-                        // Instead of sending machine event (which fails in IDLE), we manually show success
-                        setShowSuccess(true);
+
+                        // SUBMIT TO MONGODB
+                        try {
+                            for (const person of validStudents) {
+                                console.log(`🚀 Sending Request for: ${person.name}`);
+                                const result = await MongoDBService.markAttendance({
+                                    person: person.name,
+                                    confidence: person.confidence
+                                });
+                                console.log("🎉 Server Replied:", JSON.stringify(result));
+                            }
+
+                            setShowSuccess(true);
+                            Alert.alert("SUCCESS", "Attendance saved to MongoDB Atlas!");
+
+                        } catch (e) {
+                            console.error("❌ SUBMISSION FAILED:", e);
+                            const serverMsg = e.response?.data?.error || e.message;
+                            Alert.alert("Submission Failed", `Error: ${serverMsg}`);
+                        }
                     }}
                     onCancel={() => setShowLiveScan(false)}
                 />
             );
         }
+
 
         switch (state.value) {
             case 'IDLE':

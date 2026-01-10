@@ -57,19 +57,13 @@ export const MongoDBService = {
 
     // 4. Mark Attendance (REAL ML Integration)
     markAttendance: async (predictionData) => {
-        try {
-            // predictionData = { person: "eswar", confidence: 0.95 }
-            const response = await axios.post(`${API_URL}/attendance/mark`, {
-                person: predictionData.person,
-                confidence: predictionData.confidence
-            }, { timeout: 5000 });
+        // predictionData = { person: "eswar", confidence: 0.95 }
+        const response = await axios.post(`${API_URL}/mark-attendance`, {
+            person: predictionData.person,
+            confidence: predictionData.confidence
+        }, { timeout: 5000 });
 
-            console.log("[Attendance] Server Response:", response.data);
-            return response.data;
-        } catch (error) {
-            console.error("[Attendance] Failed to mark:", error.message);
-            // Fallback for demo if DB is offline: return success so UI allows flow
-            return { success: true, message: "Offline/Demo Mode" };
-        }
+        console.log("[Attendance] Server Response:", response.data);
+        return response.data;
     }
 };

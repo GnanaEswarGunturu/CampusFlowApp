@@ -126,12 +126,12 @@ def predict():
         except cv2.error:
             return jsonify({"status": "error", "message": "Model untrained"})
 
-        THRESHOLD = 100
+        # TUNING: Lower distance = better match.
+        # < 50: Excellent, 50-90: Good/Okay, > 90: Unknown
+        THRESHOLD = 90.0
         
-        if distance < 50:
-            confidence = 1.0 - (distance / 100)
-        else:
-            confidence = max(0.0, 1.0 - (distance / 150))
+        # Simple Linear Confidence: 0 (Dist 100) to 1.0 (Dist 0)
+        confidence = float(max(0.0, (100.0 - distance) / 100.0))
 
         found_name = "Other"
         for name, lid in label_map.items():
@@ -139,6 +139,8 @@ def predict():
                 found_name = name
                 break
         
+        print(f"🧐 Analysis: Found='{found_name}' Dist={distance} (Threshold={THRESHOLD})")
+
         is_match = distance < THRESHOLD
         final_name = found_name if is_match else "Other"
         
@@ -155,7 +157,7 @@ def predict():
         
         return jsonify({
             "status": "match",
-            "person": "eswar" if is_eswar else "other",
+            "person": final_name, # Return actual name (e.g. "Praveen", "Eswar")
             "confidence": round(confidence, 2),
             "distance": distance
         })
@@ -183,7 +185,9 @@ try:
     
     # --- SCHEMA ENFORCEMENT ---
     # prevent duplicate attendance for the same student on the same day
-    attendance_col.create_index([("studentId", 1), ("date", 1)], unique=True)
+    # Note: If reusing an existing collection, you may need to drop the old index manually in Atlas
+    # db.attendance.drop_index("studentId_1_date_1")
+    attendance_col.create_index([("personId", 1), ("date", 1)], unique=True)
     
     print(f"✅ Connected to MongoDB: {DB_NAME}")
     print("   Collection: attendance")
@@ -207,16 +211,21 @@ except errors.ServerSelectionTimeoutError:
 # Maps the ML Label (e.g. "Eswar") to the official Student ID
 STUDENT_DB = {
     "eswar": { "id": "CSE2026_045", "name": "Eswar" },
-    "praveen": { "id": "CSE2026_046", "name": "Praveen" }
+    "praveen": { "id": "CSE2026_046", "name": "Praveen" },
+    "unknown": { "id": "UNKNOWN_000", "name": "Unknown Visitor" },
+    "unknown face": { "id": "UNKNOWN_000", "name": "Unknown Visitor" },
+    "other": { "id": "UNKNOWN_000", "name": "Unknown Visitor" }
 }
 
-@app.route('/api/attendance/mark', methods=['POST'])
+@app.route('/api/mark-attendance', methods=['POST'])
 def mark_attendance():
+    print("🔔 MARK ATTENDANCE ENDPOINT HIT! Processing request...")
     if db is None:
         return jsonify({"error": "MongoDB Service Unavailable"}), 503
 
     try:
         data = request.json
+        print(f"📥 Received Attendance Data: {data}")
         # Expected: { "person": "eswar", "confidence": 0.91 }
         
         person_label = data.get('person', '').lower()
@@ -225,27 +234,30 @@ def mark_attendance():
         # 1. Validate Mapping (One-to-One)
         student = STUDENT_DB.get(person_label)
         if not student:
+            print(f"⚠️ Validation Failed: Unknown Person ({person_label})")
             return jsonify({"error": "Student not found in mapping"}), 404
 
-        # 2. Validate Threshold
-        if confidence < 0.50: 
-             return jsonify({"error": "Confidence below threshold"}), 400
+        # 2. Minimum Threshold (>= 0.0) -> User Request: "Any confidence > 0"
+        # We rely on the ML 'predict' function to filter bad matches via Distance THRESHOLD.
+        # If it reaches here with a valid name, we accept it.
+        if confidence <= 0.0: 
+             print(f"⚠️ Validation Failed: Zero Confidence ({confidence})")
+             return jsonify({"error": "Confidence must be > 0"}), 400
 
-        # 3. Construct Document
+        # 3. Construct Document (Strict Schema)
         now = datetime.datetime.now()
         date_str = now.strftime("%Y-%m-%d")
         time_str = now.strftime("%H:%M:%S")
 
         doc = {
-            "studentId": student["id"],
-            "studentName": student["name"],
-            "date": date_str,      # Query Filter
-            "time": time_str,      # Sort Key
+            "personId": student["id"],      # CHANGED from studentId
+            "name": student["name"],        # CHANGED from studentName
+            "date": date_str,
+            "time": time_str,
             "confidence": confidence,
             "status": "Present",
-            "recognizedBy": "FaceRecognition",
-            "device": "MobileApp",
-            "createdAt": now    # Audit Timestamp
+            "source": "FaceRecognition",    # CHANGED from recognizedBy
+            "createdAt": now
         }
 
         # 4. Insert into MongoDB (Atomic)
@@ -253,21 +265,16 @@ def mark_attendance():
             attendance_col.insert_one(doc)
             print(f"✅ Attendance Marked: {student['name']}")
             return jsonify({
-                "success": True, 
-                "message": "Attendance Marked Successfully",
-                "data": { 
-                    "studentId": student["id"], 
-                    "name": student["name"], 
-                    "date": date_str,
-                    "time": time_str 
-                }
+                "message": "Attendance marked successfully",
+                "date": date_str,
+                "time": time_str,
+                "confidence": confidence
             })
         except errors.DuplicateKeyError:
             print(f"⚠️ Duplicate ignored: {student['name']}")
             return jsonify({
-                "success": True, 
-                "message": "Already marked for today",
-                "data": { "studentId": student["id"] }
+                "message": "Attendance already marked for today",
+                "date": date_str
             })
 
     except Exception as e:
